@@ -13,6 +13,23 @@ body {
   padding: 0 1rem;
 }
 
+@media (max-width: 1024px) {
+  .content {
+    margin: 0 auto;
+    padding: 0 1rem;
+    width: 80vw;
+  }
+}
+
+/* Phones */
+@media (max-width: 768px) {
+  .content {
+    margin: 0 auto;
+    padding: 0 1rem;
+    width: 90vw;
+  }
+}
+
 .svg-row {
   display: flex;
   align-items: center;
@@ -30,6 +47,18 @@ article {
   padding: 2rem 1rem;
 }
 
+article figure {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+article figure img {
+  width: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
 .entry-hint-parent {
   margin: 0px;
 }
@@ -39,11 +68,10 @@ a {
   text-decoration: none;
 }
 
-img,
-.entry-image {
+img {
   margin-top: 1rem;
   border-radius: 5px;
-  width: 48vw;
+  width: 98%;
 }
 
 .textContent {
@@ -58,7 +86,7 @@ hr {
   border: none;
   height: 2px;
   background-color: #a349a4;
-  width: 40vw;
+  width: 80%;
 }
 
 .specialText {
@@ -68,7 +96,7 @@ hr {
 figure {
   padding: 0;
   margin: 0;
-  width: 48vw;
+  width: 98%;
 }
 
 figcaption {
