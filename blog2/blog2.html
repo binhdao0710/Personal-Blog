@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      HackTheBox Cross-Site Scripting (XSS) Skill Assessment Writeup
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Binh's blog</title>
+    <link rel="stylesheet" href="../blog.css" />
+  </head>
+  <body>
+    <div class="content">
+      <div class="blogHeader">
+        <h2 class="entry-hint-parent">
+          HackTheBox File Inclusion Skill Assessment Writeup
+        </h2>
+        <footer class="entry-footer">
+          <span title="2026-06-29 00:00:00 +0000 UTC">June 29, 2026</span
+          >&nbsp;·&nbsp;15 min&nbsp;·&nbsp;Binh Dao
+        </footer>
+        <br />
+        <figure><img class="entry-image" src="FileInclusion.png" /></figure>
+      </div>
+      <hr />
+      <div class="textContent">
+        <p>First I went to the assessment page via Burp Suite.</p>
+        <figure>
+          <img src="1.png" />
+          <figcaption>Initial web page access</figcaption>
+        </figure>
+        <p>
+          I found three requests, the first one is a post request without
+          uploaded parameters.
+        </p>
+        <figure>
+          <img src="2.png" />
+          <figcaption>Post request</figcaption>
+        </figure>
+        <p>
+          The second notable one is a get request, using the first name I
+          inputted, I tried to use directory traversal.
+        </p>
+        <figure>
+          <img src="3.png" />
+          <figcaption>Reflected directory traversal</figcaption>
+        </figure>
+        <p>
+          The parameter just reflected, meaning it doesn't lead to any file
+          stored on the server itself.
+        </p>
+        <p>The third request calls to an image API.</p>
+        <figure>
+          <img src="4.png" />
+          <figcaption>GET Request to image API</figcaption>
+        </figure>
+        <p>
+          I used a wordlist to FUZZ for directory traversal using the following
+          command in ffuf:
+        </p>
+        <i class="specialText">
+          ffuf -w /usr/share/seclists/Fuzzing/LFI/LFI-Jhaddix.txt:FUZZ -u
+          'http://154.57.164.73:30639/api/image.php?p=FUZZ' -fs 0
+        </i>
+        <figure>
+          <img src="5.png" />
+          <figcaption>Fuzzing for a payload</figcaption>
+        </figure>
+        <p>There were a couple of hits which I tried out via Burpsuite.</p>
+        <figure>
+          <img src="6.png" />
+          <figcaption>Successful directory traversal</figcaption>
+        </figure>
+        <p>
+          The payload was successful. Next I attempted to read the php
+          configuration file and found that php version 8.2 was installed.
+        </p>
+        <figure>
+          <img src="7.png" />
+          <figcaption>Reading the configuration file</figcaption>
+        </figure>
+        <p>
+          I found that neither <i class="specialText">allow_url_include</i> or
+          <i class="specialText">extension=expect</i> was available, which
+          prompted me to find another solution.
+        </p>
+        <p>Next I tried to read the source code of the application.php file.</p>
+        <figure>
+          <img src="8.png" />
+          <figcaption>application.php source code</figcaption>
+        </figure>
+        <p>
+          After messing around with the payload for a while, I finally was able
+          to read the php file for application.php.
+        </p>
+        <p>
+          I found that the uploaded file ends up in the ../uploads folder and
+          the file name is a hash of the file content using md5, which means
+          we'll be able to predict and find our file if we were to upload a
+          shell, but then there’s the question of how to execute that file.
+        </p>
+        <p>
+          Next I read the contact.php page, and found that there’s a region
+          parameter that only checks for “.” and “/”, if the parameter does not
+          contain these value the file will be url decoded and appended with
+          php.
+        </p>
+        <figure>
+          <img src="9.png" />
+          <figcaption>contact.php source code</figcaption>
+        </figure>
+        <p>
+          The strategy then was to upload a php shell via the application page,
+          then execute it via the browser.
+        </p>
+        <p>I used this simple php web shell.</p>
+        <i class="specialText"
+          >&lt;?php system($_GET[&quot;cmd&quot;]); ?&gt;</i
+        >
+        <p>
+          Next I first needed to grab the name that our shell was uploaded to,
+          which gave us fc023fcacb27a7ad72d605c4e300b389.
+        </p>
+        <figure>
+          <img src="10.png" />
+          <figcaption>Generating a hash</figcaption>
+        </figure>
+        <p>
+          Next I needed to url encode the file path so that it can be decoded
+          later giving us the following
+          %2E%2E%2Fuploads%2Ffc023fcacb27a7ad72d605c4e300b389.
+        </p>
+        <p>However, the payload gave us this error.</p>
+        <figure>
+          <img src="11.png" />
+          <figcaption>Payload upload error</figcaption>
+        </figure>
+        <p>
+          So I tried again by double encoding the url giving us this
+          %252E%252E%252Fuploads%252Ffc023fcacb27a7ad72d605c4e300b389.
+        </p>
+        <figure>
+          <img src="12.png" />
+          <figcaption>Double URL encoding</figcaption>
+        </figure>
+        <p>This worked.</p>
+        <figure>
+          <img src="13.png" />
+          <figcaption>Successful upload</figcaption>
+        </figure>
+        <p>
+          Now with RCE obtained, I still needed to find the flag at the root
+          directory.
+        </p>
+        <figure>
+          <img src="14.png" />
+          <figcaption>Directory listing</figcaption>
+        </figure>
+        <p>
+          Which was found by listing the contents of the root directory, now the
+          flag can be seen by using cat.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
